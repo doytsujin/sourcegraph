@@ -608,7 +608,6 @@ CREATE TABLE batch_spec_workspace_execution_jobs (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     cancel boolean DEFAULT false NOT NULL,
-    access_token_id bigint,
     queued_at timestamp with time zone DEFAULT now(),
     user_id integer
 );
@@ -644,7 +643,6 @@ CREATE VIEW batch_spec_workspace_execution_queue AS
             exec.created_at,
             exec.updated_at,
             exec.cancel,
-            exec.access_token_id,
             exec.queued_at,
             exec.user_id,
             rank() OVER (PARTITION BY queue.user_id ORDER BY exec.created_at, exec.id) AS place_in_user_queue
@@ -669,7 +667,6 @@ CREATE VIEW batch_spec_workspace_execution_queue AS
     materialized_queue_candidates.created_at,
     materialized_queue_candidates.updated_at,
     materialized_queue_candidates.cancel,
-    materialized_queue_candidates.access_token_id,
     materialized_queue_candidates.queued_at,
     materialized_queue_candidates.user_id,
     materialized_queue_candidates.place_in_user_queue
@@ -3812,9 +3809,6 @@ ALTER TABLE ONLY batch_spec_resolution_jobs
 
 ALTER TABLE ONLY batch_spec_workspace_execution_jobs
     ADD CONSTRAINT batch_spec_workspace_execution_job_batch_spec_workspace_id_fkey FOREIGN KEY (batch_spec_workspace_id) REFERENCES batch_spec_workspaces(id) ON DELETE CASCADE DEFERRABLE;
-
-ALTER TABLE ONLY batch_spec_workspace_execution_jobs
-    ADD CONSTRAINT batch_spec_workspace_execution_jobs_access_token_id_fkey FOREIGN KEY (access_token_id) REFERENCES access_tokens(id) ON DELETE SET NULL DEFERRABLE;
 
 ALTER TABLE ONLY batch_spec_workspaces
     ADD CONSTRAINT batch_spec_workspaces_batch_spec_id_fkey FOREIGN KEY (batch_spec_id) REFERENCES batch_specs(id) ON DELETE CASCADE DEFERRABLE;
