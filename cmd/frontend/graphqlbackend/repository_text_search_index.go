@@ -71,13 +71,12 @@ func (r *repositoryTextSearchIndexResolver) Status(ctx context.Context) (*reposi
 }
 
 type notIndexedResolver struct {
-	name    string
-	branch  string
-	version string
-	client  zoekt.Streamer
+	repoName string
+	branch   string
+	client   zoekt.Streamer
 }
 
-func (ni *notIndexedResolver) Count(ctx context.Context) BigInt {
+func (r *notIndexedResolver) Count(ctx context.Context) BigInt {
 	expr, err := syntax.Parse("^NOT-INDEXED: ", syntax.ClassNL|syntax.PerlX|syntax.UnicodeGroups)
 	if err != nil {
 		return BigInt{-1}
@@ -86,16 +85,12 @@ func (ni *notIndexedResolver) Count(ctx context.Context) BigInt {
 	var stats zoekt.Stats
 	q := &zoektquery.And{[]zoektquery.Q{
 		&zoektquery.Regexp{Regexp: expr, Content: true, CaseSensitive: true},
-		&zoektquery.Branch{Pattern: ni.branch},
-		&zoektquery.RepoSet{Set: map[string]bool{ni.name: true}},
+		&zoektquery.Branch{Pattern: r.branch},
+		&zoektquery.RepoSet{Set: map[string]bool{r.repoName: true}},
 	}}
-	if err := ni.client.StreamSearch(
-		ctx,
-		q,
-		&zoekt.SearchOptions{},
-		stream.SenderFunc(func(sr *zoekt.SearchResult) {
-			stats.Add(sr.Stats)
-		}),
+	if err := r.client.StreamSearch(ctx, q, &zoekt.SearchOptions{}, stream.SenderFunc(func(sr *zoekt.SearchResult) {
+		stats.Add(sr.Stats)
+	}),
 	); err != nil {
 		return BigInt{-1}
 	}
@@ -103,8 +98,8 @@ func (ni *notIndexedResolver) Count(ctx context.Context) BigInt {
 	return BigInt{int64(stats.FileCount)}
 }
 
-func (ni *notIndexedResolver) Query() string {
-	return fmt.Sprintf("r:^%s$@%s type:file select:file index:only patternType:regexp ^NOT-INDEXED:", ni.name, ni.branch)
+func (r *notIndexedResolver) Query() string {
+	return fmt.Sprintf("r:^%s$@%s type:file select:file index:only patternType:regexp ^NOT-INDEXED:", r.repoName, r.branch)
 }
 
 type repositoryTextSearchIndexStatus struct {
@@ -193,7 +188,7 @@ func (r *repositoryTextSearchIndexResolver) Refs(ctx context.Context) ([]*reposi
 			}
 			ref := refByName(name)
 			ref.indexedCommit = GitObjectID(branch.Version)
-			ref.notIndex = &notIndexedResolver{name: r.repo.Name(), branch: branch.Name, version: branch.Version, client: r.client}
+			ref.notIndexed = &notIndexedResolver{repoName: r.repo.Name(), branch: branch.Name, client: r.client}
 		}
 	}
 	return refs, nil
@@ -202,7 +197,7 @@ func (r *repositoryTextSearchIndexResolver) Refs(ctx context.Context) ([]*reposi
 type repositoryTextSearchIndexedRef struct {
 	ref           *GitRefResolver
 	indexedCommit GitObjectID
-	notIndex      *notIndexedResolver
+	notIndexed    *notIndexedResolver
 }
 
 func (r *repositoryTextSearchIndexedRef) Ref() *GitRefResolver { return r.ref }
@@ -228,5 +223,5 @@ func (r *repositoryTextSearchIndexedRef) IndexedCommit() *gitObject {
 }
 
 func (r *repositoryTextSearchIndexedRef) NotIndexed() *notIndexedResolver {
-	return r.notIndex
+	return r.notIndexed
 }
