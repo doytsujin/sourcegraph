@@ -89,7 +89,6 @@ func (ni *notIndexedResolver) Count(ctx context.Context) BigInt {
 		&zoektquery.Branch{Pattern: ni.branch},
 		&zoektquery.RepoSet{Set: map[string]bool{ni.name: true}},
 	}}
-	fmt.Println(">>>>>>>>>>>>>>>>>>>", q.String())
 	if err := ni.client.StreamSearch(
 		ctx,
 		q,
@@ -98,7 +97,6 @@ func (ni *notIndexedResolver) Count(ctx context.Context) BigInt {
 			stats.Add(sr.Stats)
 		}),
 	); err != nil {
-		fmt.Println(">>>>>>>>>>>>", err)
 		return BigInt{-1}
 	}
 

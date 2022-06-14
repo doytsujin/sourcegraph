@@ -260,9 +260,9 @@ export class RepoSettingsIndexPage extends React.PureComponent<Props, State> {
                                                     </td>
                                                 </tr>
                                                 <tr>
-                                                    <th>Not-Indexed</th>
+                                                    <th>Not Indexed</th>
                                                     <td>
-                                                        <ul>
+                                                        <ul className={styles.refs}>
                                                             {this.state.textSearchIndex.refs.map((reference, index) => (
                                                                 <li key={index}>
                                                                     <LinkOrSpan to={reference.ref.url}>
@@ -284,16 +284,6 @@ export class RepoSettingsIndexPage extends React.PureComponent<Props, State> {
                                                                 </li>
                                                             ))}
                                                         </ul>
-                                                        {/* <Link
-                                                            to={
-                                                                '/search?q=' +
-                                                                encodeURIComponent(
-                                                                    this.state.textSearchIndex.notIndexed.query
-                                                                )
-                                                            }
-                                                        >
-                                                            {this.state.textSearchIndex.notIndexed.count}{' '}
-                                                        </Link> */}
                                                     </td>
                                                 </tr>
                                             </tbody>
