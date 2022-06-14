@@ -97,6 +97,10 @@ public class JSToJavaBridgeRequestHandler {
         this.topPanel = topPanel;
     }
 
+    public Project getProject() {
+        return project;
+    }
+
     public JBCefJSQuery.Response handleInvalidRequest(Exception e) {
         return createErrorResponse("Invalid JSON passed to bridge. The error is: " + e.getClass() + ": " + e.getMessage(), convertStackTraceToString(e));
     }
