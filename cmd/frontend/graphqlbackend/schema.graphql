@@ -2939,7 +2939,7 @@ type RepositoryTextSearchIndexedRef {
     """
     EXPERIMENTAL: Information about the files that were not indexed.
     """
-    notIndexed: NotIndexed!
+    notIndexed: NotIndexed
 }
 
 """
