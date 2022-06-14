@@ -23,15 +23,6 @@ import { eventLogger } from '../../tracking/eventLogger'
 import styles from './RepoSettingsIndexPage.module.scss'
 
 /**
- * Creates a query string from a repository name
- *
- * @returns a query string to search for files which have not been indexed.
- */
-function skippedIndexedRegexpQuery(repo: string): string {
-    return 'repo:^' + repo + '$ select:file count:all index:only ^NOT-INDEXED:'
-}
-
-/**
  * Fetches a repository's text search index information.
  */
 function fetchRepositoryTextSearchIndex(id: Scalars['ID']): Observable<GQL.IRepositoryTextSearchIndex | null> {
