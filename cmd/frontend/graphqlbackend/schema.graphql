@@ -2859,6 +2859,20 @@ type RepositoryTextSearchIndex {
 }
 
 """
+EXPERIMENTAL: Information about the files that were not indexed.
+"""
+type NotIndexed {
+    """
+    The count of files that were not indexed.
+    """
+    count: BigInt!
+    """
+    The query to retrieve the list of files that were not indexed.
+    """
+    query: String!
+}
+
+"""
 The status of a repository's text search index.
 """
 type RepositoryTextSearchIndexStatus {
@@ -2922,6 +2936,10 @@ type RepositoryTextSearchIndexedRef {
     indexed is false, this field's value is null.
     """
     indexedCommit: GitObject
+    """
+    EXPERIMENTAL: Information about the files that were not indexed.
+    """
+    notIndexed: NotIndexed!
 }
 
 """

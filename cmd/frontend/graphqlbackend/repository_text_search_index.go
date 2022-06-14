@@ -2,11 +2,14 @@ package graphqlbackend
 
 import (
 	"context"
+	"fmt"
+	"regexp/syntax"
 	"sync"
 	"time"
 
 	"github.com/google/zoekt"
 	zoektquery "github.com/google/zoekt/query"
+	"github.com/google/zoekt/stream"
 
 	"github.com/sourcegraph/sourcegraph/internal/conf"
 	"github.com/sourcegraph/sourcegraph/internal/gitserver"
@@ -26,15 +29,11 @@ func (r *RepositoryResolver) TextSearchIndex() *repositoryTextSearchIndexResolve
 
 type repositoryTextSearchIndexResolver struct {
 	repo   *RepositoryResolver
-	client repoLister
+	client zoekt.Streamer
 
 	once  sync.Once
 	entry *zoekt.RepoListEntry
 	err   error
-}
-
-type repoLister interface {
-	List(ctx context.Context, q zoektquery.Q, opts *zoekt.ListOptions) (*zoekt.RepoList, error)
 }
 
 func (r *repositoryTextSearchIndexResolver) resolve(ctx context.Context) (*zoekt.RepoListEntry, error) {
@@ -69,6 +68,45 @@ func (r *repositoryTextSearchIndexResolver) Status(ctx context.Context) (*reposi
 		return nil, nil
 	}
 	return &repositoryTextSearchIndexStatus{entry: *entry}, nil
+}
+
+type notIndexedResolver struct {
+	name    string
+	branch  string
+	version string
+	client  zoekt.Streamer
+}
+
+func (ni *notIndexedResolver) Count(ctx context.Context) BigInt {
+	expr, err := syntax.Parse("^NOT-INDEXED: ", syntax.ClassNL|syntax.PerlX|syntax.UnicodeGroups)
+	if err != nil {
+		return BigInt{-1}
+	}
+
+	var stats zoekt.Stats
+	q := &zoektquery.And{[]zoektquery.Q{
+		&zoektquery.Regexp{Regexp: expr, Content: true, CaseSensitive: true},
+		&zoektquery.Branch{Pattern: ni.branch},
+		&zoektquery.RepoSet{Set: map[string]bool{ni.name: true}},
+	}}
+	fmt.Println(">>>>>>>>>>>>>>>>>>>", q.String())
+	if err := ni.client.StreamSearch(
+		ctx,
+		q,
+		&zoekt.SearchOptions{},
+		stream.SenderFunc(func(sr *zoekt.SearchResult) {
+			stats.Add(sr.Stats)
+		}),
+	); err != nil {
+		fmt.Println(">>>>>>>>>>>>", err)
+		return BigInt{-1}
+	}
+
+	return BigInt{int64(stats.FileCount)}
+}
+
+func (ni *notIndexedResolver) Query() string {
+	return fmt.Sprintf("r:^%s$@%s type:file select:file index:only patternType:regexp ^NOT-INDEXED:", ni.name, ni.branch)
 }
 
 type repositoryTextSearchIndexStatus struct {
@@ -157,6 +195,7 @@ func (r *repositoryTextSearchIndexResolver) Refs(ctx context.Context) ([]*reposi
 			}
 			ref := refByName(name)
 			ref.indexedCommit = GitObjectID(branch.Version)
+			ref.notIndex = &notIndexedResolver{name: r.repo.Name(), branch: branch.Name, version: branch.Version, client: r.client}
 		}
 	}
 	return refs, nil
@@ -165,6 +204,7 @@ func (r *repositoryTextSearchIndexResolver) Refs(ctx context.Context) ([]*reposi
 type repositoryTextSearchIndexedRef struct {
 	ref           *GitRefResolver
 	indexedCommit GitObjectID
+	notIndex      *notIndexedResolver
 }
 
 func (r *repositoryTextSearchIndexedRef) Ref() *GitRefResolver { return r.ref }
@@ -187,4 +227,8 @@ func (r *repositoryTextSearchIndexedRef) IndexedCommit() *gitObject {
 		return nil
 	}
 	return &gitObject{repo: r.ref.repo, oid: r.indexedCommit, typ: GitObjectTypeCommit}
+}
+
+func (r *repositoryTextSearchIndexedRef) NotIndexed() *notIndexedResolver {
+	return r.notIndex
 }

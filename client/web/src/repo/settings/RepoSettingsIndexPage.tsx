@@ -23,6 +23,15 @@ import { eventLogger } from '../../tracking/eventLogger'
 import styles from './RepoSettingsIndexPage.module.scss'
 
 /**
+ * Creates a query string from a repository name
+ *
+ * @returns a query string to search for files which have not been indexed.
+ */
+function skippedIndexedRegexpQuery(repo: string): string {
+    return 'repo:^' + repo + '$ select:file count:all index:only ^NOT-INDEXED:'
+}
+
+/**
  * Fetches a repository's text search index information.
  */
 function fetchRepositoryTextSearchIndex(id: Scalars['ID']): Observable<GQL.IRepositoryTextSearchIndex | null> {
@@ -46,6 +55,10 @@ function fetchRepositoryTextSearchIndex(id: Scalars['ID']): Observable<GQL.IRepo
                                 ref {
                                     displayName
                                     url
+                                }
+                                notIndexed {
+                                    count
+                                    query
                                 }
                                 indexed
                                 current
@@ -244,6 +257,43 @@ export class RepoSettingsIndexPage extends React.PureComponent<Props, State> {
                                                         ) (other branches:{' '}
                                                         {this.state.textSearchIndex.status.otherBranchesNewLinesCount.toLocaleString()}
                                                         )
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <th>Not-Indexed</th>
+                                                    <td>
+                                                        <ul>
+                                                            {this.state.textSearchIndex.refs.map((reference, index) => (
+                                                                <li key={index}>
+                                                                    <LinkOrSpan to={reference.ref.url}>
+                                                                        <Code weight="bold">
+                                                                            {reference.ref.displayName}
+                                                                        </Code>
+                                                                    </LinkOrSpan>
+                                                                    {': '}
+                                                                    <Link
+                                                                        to={
+                                                                            '/search?q=' +
+                                                                            encodeURIComponent(
+                                                                                reference.notIndexed.query
+                                                                            )
+                                                                        }
+                                                                    >
+                                                                        {reference.notIndexed.count}{' '}
+                                                                    </Link>
+                                                                </li>
+                                                            ))}
+                                                        </ul>
+                                                        {/* <Link
+                                                            to={
+                                                                '/search?q=' +
+                                                                encodeURIComponent(
+                                                                    this.state.textSearchIndex.notIndexed.query
+                                                                )
+                                                            }
+                                                        >
+                                                            {this.state.textSearchIndex.notIndexed.count}{' '}
+                                                        </Link> */}
                                                     </td>
                                                 </tr>
                                             </tbody>
